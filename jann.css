@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Manager — Final</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== LOGIN PAGE ===== */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: linear-gradient(120deg, #84fab0, #8fd3f4);
+}
+.login-section, .task-section { display: none; }
+.login-section.active { display: block; text-align:center; padding:40px; }
+.login-section input { width: 80%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #ccc; }
+.login-section button { padding:10px 20px; border:none; border-radius:8px; background:#4CAF50; color:white; cursor:pointer; }
+.login-section button:hover { background:#45a049; }
+
+/* ===== TASK PAGE ===== */
+:root { --bg-1: linear-gradient(180deg,#071029 0%, #05213a 100%); --muted: #9fb0c8; --card-blur: 10px; }
+* { box-sizing: border-box; }
+html, body { height: 100%; font-family: Inter, system-ui, Segoe UI, Roboto, Arial; background: var(--bg-1); color: #ecf6ff; }
+.wrap { max-width: 1100px; margin: 28px auto; padding: 20px; display: grid; grid-template-columns: 260px 1fr; gap: 20px; }
+.sidebar { background: linear-gradient(180deg,rgba(255,255,255,0.02),transparent); border:1px solid rgba(255,255,255,0.03); backdrop-filter: blur(var(--card-blur)); padding:18px; border-radius:14px; height:fit-content; }
+.brand { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+.logo { width:48px; height:48px; border-radius:10px; background: linear-gradient(135deg,#60a5fa,#7c3aed); display:flex; align-items:center; justify-content:center; font-weight:700; color:#021026; }
+.nav { margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+.nav button { background: transparent; border:0; padding:10px; border-radius:8px; text-align:left; color: var(--muted); cursor:pointer; font-weight:600; }
+.nav button.active { background: rgba(255,255,255,0.03); color:#fff; }
+.small { font-size:13px; color: var(--muted); }
+.main { display:flex; flex-direction:column; gap:12px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.search { flex:1; display:flex; align-items:center; gap:8px; }
+.search input { flex:1; padding:10px 12px; background:transparent; border:1px solid rgba(255,255,255,0.04); border-radius:10px; color:inherit; }
+.btn { padding:9px 12px; border-radius:10px; border:0; background:linear-gradient(90deg,#60a5fa,#7c3aed); color:#021026; font-weight:700; cursor:pointer; }
+.ghost { background: transparent; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:10px; color:var(--muted); cursor:pointer; }
+.cards { display:grid; grid-template-columns:1fr 320px; gap:16px; }
+.card { background: linear-gradient(180deg,rgba(255,255,255,0.02),transparent); border:1px solid rgba(255,255,255,0.03); border-radius:14px; padding:14px; backdrop-filter: blur(var(--card-blur)); }
+.list { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.task { display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.025); transition: transform .14s ease, box-shadow .14s ease; background: linear-gradient(90deg,rgba(255,255,255,0.01),transparent); }
+.task:hover { transform:translateY(-4px); box-shadow:0 12px 30px rgba(2,6,23,0.6); }
+.pill { padding:6px 8px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.18); }
+.priority-high { border:1px solid rgba(251,113,133,0.12); }
+.priority-medium { border:1px solid rgba(250,204,21,0.08); }
+.priority-low { border:1px solid rgba(52,211,153,0.08); }
+.due.overdue { color:#fb7185; font-weight:700; }
+.due.near { color:#f59e0b; font-weight:700; }
+.icon-btn { background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px; border-radius:8px; cursor:pointer; color:var(--muted); }
+.progress { height:10px; background: rgba(255,255,255,0.03); border-radius:999px; overflow:hidden; }
+.progress > i { display:block; height:100%; background:linear-gradient(90deg,#60a5fa,#7c3aed); width:0%; }
+.modal { position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); z-index:60; }
+.modal.active { display:flex; }
+.modal .window { width:680px; max-width:94%; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent); padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); }
+#modalForm { display:grid; grid-template-columns:1fr 180px; gap:10px; margin-top:10px; }
+.modal-actions { display:flex; gap:8px; }
+.filter-actions { display:flex; gap:8px; margin-top:8px; }
+.task-controls { display:flex; gap:8px; align-items:center; margin-top:6px; }
+@media (max-width:980px) { .wrap { grid-template-columns:1fr; } .cards { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div class="login-section active" id="loginSection">
+  <h2>Task Manager Login</h2>
+  <input type="text" id="username" placeholder="Username" required>
+  <input type="password" id="password" placeholder="Password" required>
+  <button id="loginBtn">Login</button>
+</div>
+
+<!-- TASK PAGE -->
+<div class="task-section" id="taskSection">
+  <!-- Paste your full task page HTML here (sidebar, main, modal, etc.) -->
+  <!-- Example: -->
+  <div class="wrap">
+    <aside class="sidebar card">
+      <div class="brand">
+        <div class="logo">TM</div>
+        <div>
+          <h2>Task Manager</h2>
+          <div class="small">Final • Ready</div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <button class="active" data-view="all">All Tasks</button>
+        <button data-view="todo">To do</button>
+        <button data-view="done">Completed</button>
+      </nav>
+      <div class="filters">
+        <div class="small" style="margin-bottom:8px">Projects</div>
+        <select id="projectFilter">
+          <option value="all">All projects</option>
+        </select>
+        <div class="filter-actions">
+          <button id="exportBtn" class="ghost">Export</button>
+          <button id="importBtn" class="ghost">Import</button>
+        </div>
+        <div class="small">Actions</div>
+        <div class="filter-actions">
+          <button id="clearBtn" class="ghost">Clear All</button>
+        </div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div class="search">
+          <input id="q" placeholder="Search tasks, assignee, project..." />
+        </div>
+        <div class="controls">
+          <button id="openNew" class="btn">+ New Task</button>
+        </div>
+      </div>
+      <div class="cards">
+        <section class="card">
+          <h3>Tasks</h3>
+          <div class="task-controls">
+            <select id="sortBy">
+              <option value="new">Newest</option>
+              <option value="old">Oldest</option>
+              <option value="due">Due date</option>
+              <option value="priority">Priority</option>
+            </select>
+            <div class="small" id="counts"></div>
+          </div>
+          <div id="list" class="list" aria-live="polite"></div>
+        </section>
+        <aside class="card stats">
+          <div class="stat">
+            <div>
+              <div class="small">Total</div>
+              <div id="statTotal"><b>0</b></div>
+            </div>
+            <div>
+              <div class="small">Completed</div>
+              <div id="statCompleted"><b>0</b></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="small">Progress</div>
+            <div class="progress"><i id="progBar"></i></div>
+          </div>
+          <div class="stat">
+            <div class="small">Upcoming</div>
+            <div id="statUpcoming"><b>0</b></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <!-- Modal -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="window">
+      <h3 id="modalTitle">New Task</h3>
+      <form id="modalForm">
+        <div class="modal-left">
+          <input id="mTitle" placeholder="Task title" required />
+          <input id="mAssignee" placeholder="Assignee" />
+          <input id="mProject" placeholder="Project (eg. Marketing)" />
+        </div>
+        <div class="modal-right">
+          <input id="mDue" type="date" />
+          <select id="mPriority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+          <div class="modal-actions">
+            <button type="submit" class="btn">Save</button>
+            <button type="button" id="modalClose" class="ghost">Cancel</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== LOGIN SCRIPT =====
+const loginSection = document.getElementById('loginSection');
+const taskSection = document.getElementById('taskSection');
+document.getElementById('loginBtn').addEventListener('click', ()=>{
+  const u=document.getElementById('username').value;
+  const p=document.getElementById('password').value;
+  if(u==='admin' && p==='1234'){
+    loginSection.style.display='none';
+    taskSection.style.display='block';
+    initTaskManager(); // initialize tasks after login
+  } else { alert('Invalid username or password'); }
+});
+
+// ===== TASK MANAGER SCRIPT =====
+function initTaskManager(){
+  // Constants and initial data
+  const KEY = 'tm_final_tasks';
+  let tasks = JSON.parse(localStorage.getItem(KEY) || 'null');
+  const SAMPLE = [
+    { id: 's1', title: 'Prepare notes for Constitution Law', assignee: 'Janu', project:'Study', priority:'high', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*6 },
+    { id: 's2', title: 'Revise IPC Sections 299–304', assignee: 'Janu', project:'Study', priority:'medium', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*5 },
+    { id: 's3', title: 'Practice reasoning mock test', assignee: '', project:'Study', priority:'medium', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*4 },
+    { id: 's4', title: 'Submit monthly report', assignee: 'Manager', project:'Work', priority:'high', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*3 },
+    { id: 's5', title: 'Update client details in Excel', assignee: 'You', project:'Work', priority:'medium', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*2 },
+    { id: 's6', title: 'Buy groceries and vegetables', assignee: '', project:'Personal', priority:'low', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*2 },
+    { id: 's7', title: 'Exercise for 30 minutes', assignee: '', project:'Personal', priority:'low', due: null, done:false, star:false, created: Date.now()-1000*60*60*24*1 },
+    { id: 's8', title: 'Call family doctor for appointment', assignee: '', project:'Personal', priority:'medium', due: null, done:false, star:false, created: Date.now()-1000*60*60*12 },
+    { id: 's9', title: 'Complete HTML & CSS mini-project', assignee: 'You', project:'Coding', priority:'high', due: null, done:false, star:false, created: Date.now()-1000*60*60*10 },
+    { id: 's10', title: 'Upload portfolio to GitHub', assignee: 'You', project:'Coding', priority:'medium', due: null, done:false, star:false, created: Date.now()-1000*60*60*6 }
+  ];
+  if(!tasks){ tasks = SAMPLE.slice(); localStorage.setItem(KEY, JSON.stringify(tasks)); } 
+  else { tasks = tasks.map(t => ({ ...t, created: t.created || Date.now() })); }
+
+  // DOM elements
+  const listEl = document.getElementById('list');
+  const qEl = document.getElementById('q');
+  const countsEl = document.getElementById('counts');
+  const statTotal = document.getElementById('statTotal');
+  const statCompleted = document.getElementById('statCompleted');
+  const statUpcoming = document.getElementById('statUpcoming');
+  const progBar = document.getElementById('progBar');
+  const projectFilter = document.getElementById('projectFilter');
+  const modal = document.getElementById('modal');
+  const modalForm = document.getElementById('modalForm');
+  const openNew = document.getElementById('openNew');
+  const modalTitle = document.getElementById('modalTitle');
+  const mTitle = document.getElementById('mTitle');
+  const mAssignee = document.getElementById('mAssignee');
+  const mDue = document.getElementById('mDue');
+  const mPriority = document.getElementById('mPriority');
+  const mProject = document.getElementById('mProject');
+  const modalClose = document.getElementById('modalClose');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const navButtons = document.querySelectorAll('.nav button');
+  const sortBy = document.getElementById('sortBy');
+
+  let editingId = null;
+  let currentView = 'all';
+
+  // Utility functions
+  function save(){ localStorage.setItem(KEY, JSON.stringify(tasks)); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function daysBetween(d1,d2){ return Math.ceil((d2-d1)/(1000*60*60*24)); }
+  function priorityRank(p){ return p === 'high' ? 3 : p === 'medium' ? 2 : 1; }
+
+  // Render tasks
+  function render(){
+    const q = qEl.value.trim().toLowerCase();
+    let filtered = tasks.slice();
+
+    // Filter by view
+    if(currentView==='todo') filtered = filtered.filter(t=>!t.done);
+    if(currentView==='done') filtered = filtered.filter(t=>t.done);
+
+    // Filter by project
+    if(projectFilter.value!=='all') filtered = filtered.filter(t=>(t.project||'').toLowerCase()===projectFilter.value.toLowerCase());
+
+    // Search
+    if(q) filtered = filtered.filter(t => (t.title+' '+(t.assignee||'')+' '+(t.project||'')).toLowerCase().includes(q));
+
+    // Sorting
+    if(sortBy.value==='new') filtered.sort((a,b)=>b.created-a.created);
+    if(sortBy.value==='old') filtered.sort((a,b)=>a.created-b.created);
+    if(sortBy.value==='due') filtered.sort((a,b)=> (a.due||'').localeCompare(b.due||''));
+    if(sortBy.value==='priority') filtered.sort((a,b)=> priorityRank(b.priority)-priorityRank(a.priority));
+
+    // Render list
+    listEl.innerHTML='';
+    if(filtered.length===0){ listEl.innerHTML='<div style="padding:18px;color:var(--muted)">No tasks found.</div>'; }
+
+    filtered.forEach(t=>{
+      const el = document.createElement('div'); el.className='task';
+      const left = document.createElement('div'); left.className='left';
+
+      const title = document.createElement('div'); title.className='title'; title.textContent=t.title;
+      if(t.done) title.style.textDecoration='line-through';
+
+      const meta = document.createElement('div'); meta.className='meta';
+      const ass = document.createElement('div'); ass.className='pill'; ass.textContent=t.assignee||'—';
+      const proj = document.createElement('div'); proj.className='pill'; proj.textContent=t.project||'General';
+      const pri = document.createElement('div'); pri.className='pill '+(t.priority==='high'?'priority-high':t.priority==='medium'?'priority-medium':'priority-low'); pri.textContent=t.priority.toUpperCase();
+      const due = document.createElement('div'); due.className='pill due'; due.textContent=t.due?new Date(t.due).toLocaleDateString():'No due';
+
+      if(t.due){
+        const d = new Date(t.due+'T23:59:59'); const now = new Date(); const diff = daysBetween(now,d);
+        if(diff<0) due.classList.add('overdue'); else if(diff<=2) due.classList.add('near');
+      }
+
+      meta.appendChild(ass); meta.appendChild(proj); meta.appendChild(pri); meta.appendChild(due);
+      left.appendChild(title); left.appendChild(meta);
+
+      const actions = document.createElement('div'); actions.className='actions';
+      const doneBtn = document.createElement('button'); doneBtn.className='icon-btn'; doneBtn.innerHTML=t.done?'✅':'⭕'; doneBtn.title='Toggle done';
+      doneBtn.addEventListener('click',()=>{ t.done=!t.done; save(); render(); });
+      const editBtn = document.createElement('button'); editBtn.className='icon-btn'; editBtn.innerHTML='✏️'; editBtn.title='Edit';
+      editBtn.addEventListener('click',()=>openEdit(t.id));
+      const delBtn = document.createElement('button'); delBtn.className='icon-btn'; delBtn.innerHTML='🗑️'; delBtn.title='Delete';
+      delBtn.addEventListener('click',()=>{ if(confirm('Delete this task?')){ tasks=tasks.filter(x=>x.id!==t.id); save(); render(); } });
+
+      actions.appendChild(doneBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
+      el.appendChild(left); el.appendChild(actions);
+      listEl.appendChild(el);
+    });
+
+    // Update stats
+    statTotal.innerHTML=`<b>${tasks.length}</b>`;
+    statCompleted.innerHTML=`<b>${tasks.filter(t=>t.done).length}</b>`;
+    statUpcoming.innerHTML=`<b>${tasks.filter(t=>!t.done && t.due && new Date(t.due)>new Date()).length}</b>`;
+    progBar.style.width=tasks.length===0?0:`${Math.round((tasks.filter(t=>t.done).length/tasks.length)*100)}%`;
+
+    countsEl.textContent=`${filtered.length} item(s)`;
+
+    // Update project filter
+    const projects = Array.from(new Set(tasks.map(t=>(t.project||'General').trim()))).filter(Boolean);
+    projectFilter.innerHTML='<option value="all">All projects</option>'+projects.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+    // Highlight nav
+    navButtons.forEach(b=>b.classList.toggle('active', b.dataset.view===currentView));
+  }
+
+  // Modal functions
+  function openNewModal(){
+    editingId=null;
+    modalTitle.textContent='New Task';
+    mTitle.value=''; mAssignee.value=''; mDue.value=''; mPriority.value='medium'; mProject.value='';
+    modal.classList.add('active'); mTitle.focus();
+  }
+
+  function openEdit(id){
+    const t=tasks.find(x=>x.id===id); if(!t) return;
+    editingId=id;
+    modalTitle.textContent='Edit Task';
+    mTitle.value=t.title; mAssignee.value=t.assignee||''; mDue.value=t.due||''; mPriority.value=t.priority||'medium'; mProject.value=t.project||'';
+    modal.classList.add('active'); mTitle.focus();
+  }
+
+  // Event listeners
+  modalForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const data={title:mTitle.value.trim(),assignee:mAssignee.value.trim(),due:mDue.value||null,priority:mPriority.value,project:mProject.value.trim()||'General'};
+    if(!data.title) return alert('Title required');
+    if(editingId){
+      Object.assign(tasks.find(t=>t.id===editingId), data, {modified:Date.now()});
+    } else { tasks.unshift({id:uid(),...data,done:false,star:false,created:Date.now()}); }
+    save(); render(); modal.classList.remove('active');
+  });
+
+  modalClose.addEventListener('click',()=>modal.classList.remove('active'));
+  openNew.addEventListener('click', openNewModal);
+  qEl.addEventListener('input', render);
+  sortBy.addEventListener('change', render);
+  projectFilter.addEventListener('change', render);
+  navButtons.forEach(b=>b.addEventListener('click',()=>{ currentView=b.dataset.view; render(); }));
+
+  exportBtn.addEventListener('click',()=>{
+    const blob=new Blob([JSON.stringify(tasks,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='tasks-export.json'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener('click',()=>{
+    const input=document.createElement('input'); input.type='file'; input.accept='.json,.csv';
+    input.addEventListener('change', async e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const text=await file.text();
+      try{
+        const data=JSON.parse(text);
+        if(Array.isArray(data)){ tasks=data.concat(tasks); save(); render(); alert('Imported JSON tasks'); }
+        else alert('JSON not an array');
+      }catch{
+        const lines=text.split(/\r?\n/).filter(Boolean);
+        if(lines.length>1){
+          const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+          const items=lines.slice(1).map(l=>{
+            const cols=l.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,''));
+            const obj={}; headers.forEach((h,i)=>obj[h]=cols[i]);
+            return { id:uid(), title:obj.title||'Imported', assignee:obj.assignee||'', project:obj.project||'General', priority:obj.priority||'medium', due:obj.due||null, done:obj.done==='true', star:obj.star==='true', created:Date.now() };
+          });
+          tasks=items.concat(tasks); save(); render(); alert('Imported CSV tasks');
+        } else alert('Could not parse file');
+      }
+    });
+    input.click();
+  });
+
+  clearBtn.addEventListener('click',()=>{ if(confirm('Clear ALL tasks and reset?')){ tasks=[]; save(); render(); } });
+
+  // Initialize
+  (function init(){ save(); render(); })();
+}
+</script>
